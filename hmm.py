@@ -8,7 +8,7 @@ INSTRUCTIONS:
     Complete the code (compatible with Python 3!) upload to CodeGrade via corresponding Canvas assignment.
 
 AUTHOR:
-    <your name and student number here>
+    <Ville Lehtonen, Stud. nr.: 2658063, VUnetID: VLN490>
 """
 
 import os.path as op
@@ -58,14 +58,11 @@ def viterbi(X,A,E):
     P = V['E'][-1] # The Viterbi probability: P(X,pi|A,E)
     return(pi,P,V) # Return the state path, Viterbi probability, and Viterbi trellis
 
-
-
 def forward(X,A,E):
     """Given a single sequence, with Transition and Emission probabilities,
     return the Forward probability and corresponding trellis."""
 
     allStates = A.keys()
-    emittingStates = E.keys()
     L = len(X) + 2
 
     # Initialize
@@ -84,6 +81,19 @@ def forward(X,A,E):
     # Last columns
     # for ...:
     #     F['E'][-1] += ...
+    emittingStates = E.keys()
+
+    # Middle columns
+    for i,s in enumerate(X):  ## creates an enumerate object with i = 1,2,3... and x = C,C,H,H,P,C,C...
+        for l in emittingStates: ## dict_keys([L', 'D'])
+            terms = [F[k][i] * A[k][l] for k in allStates] # k = (B,L,D,E), l = (L,D), i = (1,2,3...n) 
+            F[l][i+1] = sum(terms) * E[l][s] ## s = (C,C,H,H,P,C,C)
+
+    # Last column
+    for k in allStates:
+        term = F[k][i+1] * A[k]['E'] 
+        if term > F['E'][-1]:
+            F['E'][-1] = term
 
     #####################
     #  END CODING HERE  #
@@ -92,15 +102,13 @@ def forward(X,A,E):
     P = F['E'][-1] # The Forward probability: P(X|A,E)
     return(P,F)
 
-
-
 def backward(X,A,E):
     """Given a single sequence, with Transition and Emission probabilities,
     return the Backward probability and corresponding trellis."""
 
     allStates = A.keys()
     emittingStates = E.keys()
-    L = len(X) + 2
+    L = len(X) + 2 ## L = 12+2 = 14
 
     # Initialize
     B = {k:[0] * L for k in allStates} # The Backward trellis
@@ -114,6 +122,12 @@ def backward(X,A,E):
     # for i in range(L-3,-1,-1):
     #     s = seq[i]
     #     ...
+    
+    for i in range(L-3, -1, -1): ## L = 14, i = 11,10,9,8,7....1,0
+        s = X[i] ## s = H, C, H, H ... C, C
+        for k in allStates: ## k = (B, L, D, E)
+            terms = [A[k][l]*E[l][s]*B[l][i+1] for l in emittingStates] ## l = (L, D)
+            B[k][i] = sum(terms)
 
     #####################
     #  END CODING HERE  #
@@ -121,8 +135,6 @@ def backward(X,A,E):
 
     P = B['B'][0] # The Backward probability -- should be identical to Forward!
     return(P,B)
-
-
 
 def baumwelch(set_X,A,E):
     """Given a set of sequences X and priors A and E,
@@ -136,10 +148,35 @@ def baumwelch(set_X,A,E):
     new_A = {}
     for k in A:
         new_A[k] = {l:0 for l in A[k]}
-    
+
     new_E = {}
     for k in E:
         new_E[k] = {s:0 for s in E[k]}
+
+    #P:  4.385861279296873e-08
+    #_:  4.385861279296874e-08
+
+    #F: {'B': [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    #    'L': [0, 0.25, 0.11249999999999999, 0.05062499999999999, 0.017718749999999995, 0.0, 0.00017718749999999996, 0.00012403124999999996, 0.0, 9.457382812499998e-06, 3.310083984374999e-06, 1.1585293945312497e-06, 4.385861279296873e-07, 0],
+    #    'D': [0, 0.25, 0.11249999999999999, 0.0, 0.0, 0.0017718749999999996, 0.0006201562499999998, 0.00023477343749999993, 9.457382812499997e-05, 0.0, 0.0, 3.3100839843749994e-07, 0.0, 0],
+    #    'E': [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4.385861279296873e-08]}
+
+    #B: {'B': [4.385861279296874e-08, 9.746358398437497e-08, 2.1658574218749995e-07, 6.188164062499999e-07, 6.188164062499998e-06, 2.3477343749999994e-05, 5.217187499999999e-05, 0.00011593749999999999, 0.0011593749999999998, 0.0033125, 0.01125, 0.025, 0.0, 0],
+    #    'L': [4.624105595703124e-08, 1.1479044335937496e-07, 3.0322003906249993e-07, 8.663429687499998e-07, 2.4752656249999995e-06, 1.7506562499999997e-05, 3.2462499999999996e-05, 4.6375e-05, 0.0016231249999999996, 0.004637499999999999, 0.01325, 0.034999999999999996, 0.1, 0], 
+    #    'D': [3.270444707031249e-08, 6.064400781249999e-08, 8.663429687499999e-08, 2.4752656249999996e-07, 8.663429687499997e-06, 2.4752656249999993e-05, 6.144687499999998e-05, 0.00016231249999999997, 0.00046374999999999997, 0.001325, 0.007, 0.010000000000000002, 0.1, 0], 
+    #    'E': [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0]}
+
+    # SLL: -7.357945108770817
+
+    # new_E: {'L': {'H': 0, 'P': 0, 'C': 0},
+    #         'D': {'H': 0, 'P': 0, 'C': 0}}
+
+    # new_A: {'B': {'B': 0, 'L': 0, 'D': 0, 'E': 0},
+    #         'L': {'B': 0, 'L': 0, 'D': 0, 'E': 0}, 
+    #         'D': {'B': 0, 'L': 0, 'D': 0, 'E': 0}, 
+    #         'E': {'B': 0, 'L': 0, 'D': 0, 'E': 0}}
+
+    #set_X: ['CCHHPCCPHHCH']Add the contribution of sequence j to A and E
 
     # Iterate through all sequences in X
     SLL = 0 # Sum Log-Likelihood
@@ -151,11 +188,13 @@ def baumwelch(set_X,A,E):
         #####################
         # START CODING HERE #
         #####################
-
         # Inside the for loop: Expectation
         # Count how often you observe each transition and emission.
         # Add the counts to your posterior matrices.
         # Remember to normalize to the sequence's probability P!
+        
+       # for i in X:
+       #     terms = [F[k][i] * B[k][i] for k in allStates]
         
     # Outside the for loop: Maximization
     # Normalize row sums to 1 (except for one row in the Transition matrix!)
