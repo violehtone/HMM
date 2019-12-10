@@ -193,16 +193,14 @@ def baumwelch(set_X,A,E):
 
     for l in emittingStates:
         sumOfValues = sum(new_E[l].values())
-        alphabet = ['H', 'P', 'C']
-        for s in alphabet:
-            new_E[l][s] = new_E[l][s] / sumOfValues
+        for emission, prob in new_E[l].items():
+            new_E[l][emission] = (prob / sumOfValues)
 
     for k in allStates:
         sumOfValues = sum(new_A[k].values())
-        if k in ['B', 'D', 'L']:
-            alphabet = ['L', 'D', 'E']
-            for a in alphabet:
-                new_A[k][a] = new_A[k][a] / sumOfValues
+        if sumOfValues > 0:
+            for transition, prob in new_A[k].items():
+                new_A[k][transition] = (prob / sumOfValues)
 
     #####################
     #  END CODING HERE  #
@@ -215,8 +213,7 @@ def baumwelch(set_X,A,E):
         #      'D': {'B': 0.0, 'L': 0.2, 'D': 0.7, 'E': 0.1},
         #      'E': {'B': 0.0, 'L': 0.0, 'D': 0.0, 'E': 0.0}}
         
-        ## E: {'L': {'H': 0.5, 'P': 0.0, 'C': 0.5},
-        #      'D': {'H': 0.0, 'P': 0.5, 'C': 0.5}}
+        # E = {'L': {'H': 0.5, 'P': 0.0, 'C': 0.5},'D': {'H': 0.0, 'P': 0.5, 'C': 0.5}}
 
         #P:  4.385861279296873e-08
 
