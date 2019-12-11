@@ -84,10 +84,10 @@ def forward(X,A,E):
     emittingStates = E.keys()
 
     # Middle columns
-    for i,s in enumerate(X):  ## creates an enumerate object with i = 1,2,3... and x = C,C,H,H,P,C,C...
-        for l in emittingStates: ## dict_keys([L', 'D'])
-            terms = [F[k][i] * A[k][l] for k in allStates] # k = (B,L,D,E), l = (L,D), i = (1,2,3...n) 
-            F[l][i+1] = sum(terms) * E[l][s] ## s = (C,C,H,H,P,C,C)
+    for i,s in enumerate(X):
+        for l in emittingStates:
+            terms = [F[k][i] * A[k][l] for k in allStates]
+            F[l][i+1] = sum(terms) * E[l][s]
 
     # Last column
     term = [F[k][i+1] * A[k]['E'] for k in allStates]
@@ -121,10 +121,10 @@ def backward(X,A,E):
     #     s = seq[i]
     #     ...
     
-    for i in range(L-3, -1, -1): ## L = 14, i = 11,10,9,8,7....1,0
-        s = X[i] ## s = H, C, H, H ... C, C
-        for k in allStates: ## k = (B, L, D, E)
-            terms = [A[k][l]*E[l][s]*B[l][i+1] for l in emittingStates] ## l = (L, D)
+    for i in range(L-3, -1, -1):
+        s = X[i]
+        for k in allStates:
+            terms = [A[k][l]*E[l][s]*B[l][i+1] for l in emittingStates]
             B[k][i] = sum(terms)
 
     #####################
@@ -166,30 +166,25 @@ def baumwelch(set_X,A,E):
         # Add the counts to your posterior matrices. (new_A, new_E)
         # Remember to normalize to the sequence's probability P!
 
-        #i  0 1 2 3 4 5 6 7 8 9 10 11 12 13
-        #F: - C C H H P C C P H  H  C  H  -
-
-        #i   0 1 2 3 4 5 6 7 8  9  10 11
-        #X   C C H H P C C P H  H  C  H 
-
+        #transitions
         for k in allStates:
+            #transitions for the last state E
+            new_A[k]['E'] += (F[k][-2] * A[k]['E'] / P)
+            #other transitions
             for l in emittingStates:
-                for i,s in enumerate(X):
-                    #emissions
-                    new_E[l][s] += (F[l][i+1] * B[l][i+1] / P)
-                    #transitions
-                    new_A[k][l] += F[k][i] * A[k][l] * E[l][s] * B[l][i+1] / P
-                
-        #transitions for the last state E
-        for k in allStates:
-            new_A[k]['E'] = (F[k][-2] * A[k]['E'] / P)
+                for i in range(len(X)):
+                    new_A[k][l] += F[k][i] * A[k][l] * E[l][X[i]] * B[l][i+1] / P
+
+        #emissions
+        for i,s in enumerate(X):
+            for k in emittingStates:
+                new_E[k][s] += F[k][i+1] * B[k][i+1] / P
+
 
     # Outside the for loop: Maximization
     # Normalize row sums to 1 (except for one row in the Transition matrix!)
     # new_A = ...
     # new_E = ...
-
-    ## CHECK OUT HOW TO NORMALIZE !!!! (Returning key error now)
 
     for l in emittingStates:
         sumOfValues = sum(new_E[l].values())
@@ -205,7 +200,7 @@ def baumwelch(set_X,A,E):
     #####################
     #  END CODING HERE  #
     #####################
-
+    
     return(SLL,new_A,new_E)
 
         ## A: {'B': {'B': 0.0, 'L': 0.5, 'D': 0.5, 'E': 0.0},
