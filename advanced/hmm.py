@@ -8,7 +8,7 @@ INSTRUCTIONS:
     Complete the code (compatible with Python 3!) upload to CodeGrade via corresponding Canvas assignment.
 
 AUTHOR:
-    <your name and student number here>
+    <Ville Lehtonen, Stud. nr.: 2658063, VUnetID: VLN490>
 """
 
 import os.path as op
@@ -58,14 +58,11 @@ def viterbi(X,A,E):
     P = V['E'][-1] # The Viterbi probability: P(X,pi|A,E)
     return(pi,P,V) # Return the state path, Viterbi probability, and Viterbi trellis
 
-
-
 def forward(X,A,E):
     """Given a single sequence, with Transition and Emission probabilities,
     return the Forward probability and corresponding trellis."""
 
     allStates = A.keys()
-    emittingStates = E.keys()
     L = len(X) + 2
 
     # Initialize
@@ -84,6 +81,17 @@ def forward(X,A,E):
     # Last columns
     # for ...:
     #     F['E'][-1] += ...
+    emittingStates = E.keys()
+
+    # Middle columns
+    for i,s in enumerate(X):
+        for l in emittingStates:
+            terms = [F[k][i] * A[k][l] for k in allStates]
+            F[l][i+1] = sum(terms) * E[l][s]
+
+    # Last column
+    term = [F[k][i+1] * A[k]['E'] for k in allStates]
+    F['E'][-1] = sum(term)
 
     #####################
     #  END CODING HERE  #
@@ -92,15 +100,13 @@ def forward(X,A,E):
     P = F['E'][-1] # The Forward probability: P(X|A,E)
     return(P,F)
 
-
-
 def backward(X,A,E):
     """Given a single sequence, with Transition and Emission probabilities,
     return the Backward probability and corresponding trellis."""
 
     allStates = A.keys()
     emittingStates = E.keys()
-    L = len(X) + 2
+    L = len(X) + 2 ## L = 12+2 = 14
 
     # Initialize
     B = {k:[0] * L for k in allStates} # The Backward trellis
@@ -114,6 +120,12 @@ def backward(X,A,E):
     # for i in range(L-3,-1,-1):
     #     s = seq[i]
     #     ...
+    
+    for i in range(L-3, -1, -1):
+        s = X[i]
+        for k in allStates:
+            terms = [A[k][l]*E[l][s]*B[l][i+1] for l in emittingStates]
+            B[k][i] = sum(terms)
 
     #####################
     #  END CODING HERE  #
@@ -121,8 +133,6 @@ def backward(X,A,E):
 
     P = B['B'][0] # The Backward probability -- should be identical to Forward!
     return(P,B)
-
-
 
 def baumwelch(set_X,A,E):
     """Given a set of sequences X and priors A and E,
@@ -136,7 +146,7 @@ def baumwelch(set_X,A,E):
     new_A = {}
     for k in A:
         new_A[k] = {l:0 for l in A[k]}
-    
+
     new_E = {}
     for k in E:
         new_E[k] = {s:0 for s in E[k]}
@@ -151,24 +161,48 @@ def baumwelch(set_X,A,E):
         #####################
         # START CODING HERE #
         #####################
-
         # Inside the for loop: Expectation
         # Count how often you observe each transition and emission.
-        # Add the counts to your posterior matrices.
+        # Add the counts to your posterior matrices. (new_A, new_E)
         # Remember to normalize to the sequence's probability P!
-        
+
+        #transitions
+        for k in allStates:
+            #transitions for the last state E
+            new_A[k]['E'] += (F[k][-2] * A[k]['E'] / P)
+            #other transitions
+            for l in emittingStates:
+                for i in range(len(X)):
+                    new_A[k][l] += F[k][i] * A[k][l] * E[l][X[i]] * B[l][i+1] / P
+
+        #emissions
+        for i,s in enumerate(X):
+            for k in emittingStates:
+                new_E[k][s] += F[k][i+1] * B[k][i+1] / P
+
+
     # Outside the for loop: Maximization
     # Normalize row sums to 1 (except for one row in the Transition matrix!)
     # new_A = ...
     # new_E = ...
 
+    for l in emittingStates:
+        sumOfValues = sum(new_E[l].values())
+        for emission, prob in new_E[l].items():
+            new_E[l][emission] = (prob / sumOfValues)
+
+    for k in allStates:
+        sumOfValues = sum(new_A[k].values())
+        if sumOfValues > 0:
+            for transition, prob in new_A[k].items():
+                new_A[k][transition] = (prob / sumOfValues)
+
     #####################
     #  END CODING HERE  #
     #####################
-
+    
     return(SLL,new_A,new_E)
-
-
+    
 
 def main(args = False):
     "Perform the specified algorithm, for a given set of sequences and parameters."
@@ -256,7 +290,7 @@ def main(args = False):
             if verbosity >= 2: print_params(A,E)
 
         converged = current_SLL - last_SLL <= threshold
-        final_SLL = sum([log10(forward(X,A,E)[0]) for X in set_X])
+        final_SLL = sum([log10(forward(X,A,E)[0]) if forward(X,A,E)[0] > 0 else 0 for X in set_X])
 
         # Save and/or print relevant output
         save('SLL','%1.2e\t%i\t%s' % (final_SLL, i, converged))

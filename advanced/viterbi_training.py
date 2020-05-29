@@ -12,14 +12,14 @@ INSTRUCTIONS:
     training!
 
 AUTHOR:
-    <your name and student number here>
+    <Ville Lehtonen, Stud. nr.: 2658063, VUnetID: VLN490>
 """
 
 import os.path as op
 
 from os import makedirs
 from argparse import ArgumentParser, RawTextHelpFormatter
-from hmm_utility import load_fasta, load_tsv, serialize
+from hmm_utility import load_fasta, load_tsv, serialize, print_params
 from hmm import viterbi
 
 
@@ -57,15 +57,23 @@ def train_viterbi(X,A,E):
     # Initialize your posterior matrices
     new_A = {}    
     # for k in A: ...
+    for k in A:
+        new_A[k] = {l:0 for l in A[k]}
 
     new_E = {}
     # for k in E: ...
-    
+    for k in E:
+        new_E[k] = {s:0 for s in E[k]}
 
     # Get the state path of every sequence in X,
     # using the viterbi() function imported from hmm.py
+    print("DEBUG: ", X)
+
     for seq,label in X:
-        # ...
+        # pi = state path, P = Viterbi probability, V = Viterbi trellis
+        pi, P, V = viterbi(X,A,E)
+
+
         pass
 
         # Count the transitions and emissions for every state
@@ -99,8 +107,13 @@ def main(args = False):
     # Iterate until you've reached i_max or until your parameters have converged!
     # Note Viterbi converges discretely (unlike Baum-Welch), so you don't need to
     # track your Sum Log-Likelihood to decide this.
+    i = 0
+    while i <= i_max:
+        i+=1
+        A, E = train_viterbi(set_X,A,E)
 
-
+    print('========================================\n')
+    print_params(A, E)
     #####################
     #  END CODING HERE  #
     #####################
